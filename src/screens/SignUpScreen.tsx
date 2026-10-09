@@ -1,0 +1,280 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, radius, typography } from '../theme';
+import { Input } from '../components/Input';
+import { Button } from '../components/Button';
+import { Icon } from '../components/Icon';
+import { useAppStore } from '../store/useAppStore';
+
+interface SignUpScreenProps {
+  onSuccess: () => void;
+  onNavigateToLogin: () => void;
+}
+
+export const SignUpScreen: React.FC<SignUpScreenProps> = ({
+  onSuccess,
+  onNavigateToLogin,
+}) => {
+  const { signUp } = useAppStore();
+
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!fullName.trim()) {
+      newErrors.fullName = 'Full name is required';
+    }
+
+    if (!email.trim()) {
+      newErrors.email = 'Email address is required';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!phone.trim()) {
+      newErrors.phone = 'Phone number is required for account recovery and alerts';
+    } else if (phone.replace(/\D/g, '').length < 10) {
+      newErrors.phone = 'Please enter a valid phone number (min. 10 digits)';
+    }
+
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSignUp = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      await signUp(fullName.trim(), email.trim().toLowerCase(), phone.trim(), password);
+      onSuccess();
+    } catch (err: any) {
+      setErrors({ form: err?.message || 'Failed to create account. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.logoBadge}>
+              <Icon name="droplet" size={20} color={colors.primary} />
+            </View>
+            <Text style={styles.title}>Create SafeSip Account</Text>
+            <Text style={styles.subtitle}>
+              Register with your email and phone number to monitor water quality and contribute to community maps.
+            </Text>
+          </View>
+
+          {/* Registration Note */}
+          <View style={styles.infoNote}>
+            <Icon name="info" size={14} color={colors.primary} />
+            <Text style={styles.infoText}>
+              Registration uses your Gmail and phone number only. No third-party sign-in.
+            </Text>
+          </View>
+
+          {/* Form Fields */}
+          <View style={styles.form}>
+            <Input
+              label="Full Name"
+              placeholder="e.g. Vedant Sharma"
+              value={fullName}
+              onChangeText={text => {
+                setFullName(text);
+                if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
+              }}
+              error={errors.fullName}
+              autoCapitalize="words"
+            />
+
+            <Input
+              label="Gmail / Email Address"
+              placeholder="name@gmail.com"
+              value={email}
+              onChangeText={text => {
+                setEmail(text);
+                if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+              }}
+              error={errors.email}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <Input
+              label="Phone Number"
+              placeholder="+91 9876543210"
+              value={phone}
+              onChangeText={text => {
+                setPhone(text);
+                if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
+              }}
+              error={errors.phone}
+              keyboardType="phone-pad"
+            />
+
+            <Input
+              label="Password"
+              placeholder="Min. 8 characters"
+              value={password}
+              onChangeText={text => {
+                setPassword(text);
+                if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+              }}
+              error={errors.password}
+              secureTextEntry
+            />
+
+            <Input
+              label="Confirm Password"
+              placeholder="Re-enter your password"
+              value={confirmPassword}
+              onChangeText={text => {
+                setConfirmPassword(text);
+                if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: '' }));
+              }}
+              error={errors.confirmPassword}
+              secureTextEntry
+            />
+
+            {errors.form && <Text style={styles.formError}>{errors.form}</Text>}
+
+            <Button
+              title="Create Account"
+              onPress={handleSignUp}
+              loading={loading}
+              size="lg"
+              style={{ marginTop: 8 }}
+            />
+          </View>
+
+          {/* Bottom Link */}
+          <View style={styles.footerRow}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <TouchableOpacity onPress={onNavigateToLogin}>
+              <Text style={styles.loginLink}>Log In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  container: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  header: {
+    marginBottom: 16,
+  },
+  logoBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  infoNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: colors.primarySubtle,
+    padding: 10,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    marginBottom: 20,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.primary,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  form: {
+    marginBottom: 20,
+  },
+  formError: {
+    fontSize: 13,
+    color: colors.unsafe,
+    marginBottom: 10,
+    textAlign: 'center',
+    backgroundColor: 'rgba(255,59,48,0.10)',
+    padding: 8,
+    borderRadius: radius.sm,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  loginLink: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+});
