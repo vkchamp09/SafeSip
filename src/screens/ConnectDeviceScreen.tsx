@@ -334,7 +334,8 @@ export const ConnectDeviceScreen: React.FC<ConnectDeviceScreenProps> = ({ onBack
         />
         {/* ── Simulator Button (testing without real HC-05) ─────────────── */}
         <Button
-          title="🧪 Connect Simulator (No Real Hardware)"
+          title="Connect Simulator (No Real Hardware)"
+          icon="flask"
           variant="secondary"
           onPress={handleConnectSimulator}
           size="md"
@@ -357,8 +358,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     marginBottom: 16,
     ...shadows.card,
   },
@@ -434,7 +433,7 @@ const styles = StyleSheet.create({
   deviceRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: colors.surface, padding: 14, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.borderLight, marginBottom: 8, ...shadows.card,
+    borderWidth: 1.5, borderColor: 'transparent', marginBottom: 8, ...shadows.card,
   },
   deviceRowActive: { borderColor: colors.primary, backgroundColor: colors.primarySubtle },
   deviceLeftInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },

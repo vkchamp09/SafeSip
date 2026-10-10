@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { INDIA_OUTLINE_RINGS } from './indiaOutline';
 import { WebView } from 'react-native-webview';
 import { colors, radius, typography, shadows } from '../theme';
 import { useAppStore } from '../store/useAppStore';
@@ -24,9 +25,16 @@ interface CommunityMapScreenProps {
 
 const { width } = Dimensions.get('window');
 
-// Geographic centre of India
-const INDIA_CENTER = { lat: 20.5937, lng: 78.9629 };
-const INDIA_ZOOM = 5;
+// India-only map: centre, default zoom and the bounding box the map is locked to
+const INDIA_CENTER = { lat: 22.5, lng: 80.0 };
+const INDIA_ZOOM = 4.5;
+const INDIA_BOUNDS = { south: 5.0, west: 66.0, north: 38.5, east: 99.0 };
+
+const isInIndia = (lat: number, lng: number) =>
+  lat >= INDIA_BOUNDS.south &&
+  lat <= INDIA_BOUNDS.north &&
+  lng >= INDIA_BOUNDS.west &&
+  lng <= INDIA_BOUNDS.east;
 
 export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelectSource }) => {
   const {
@@ -40,6 +48,8 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
   const [selectedFilter, setSelectedFilter] = useState<'ALL' | SafetyStatus>('ALL');
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const insets = useSafeAreaInsets();
+  const topBlock = insets.top + 118; // height of the floating search + chips, for placing map controls
 
   const webViewRef = useRef<WebView>(null);
   const slideAnim = useRef(new Animated.Value(200)).current;
@@ -156,8 +166,9 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
   // Default view: centred on India. If the user already has sources, centre on
   // the first one at street level; otherwise show the whole country.
   const defaultCenter = useMemo(() => {
-    if (sources.length > 0) {
-      return { lat: sources[0].latitude, lng: sources[0].longitude, zoom: 13 };
+    const inIndia = sources.find(src => isInIndia(src.latitude, src.longitude));
+    if (inIndia) {
+      return { lat: inIndia.latitude, lng: inIndia.longitude, zoom: 11 };
     }
     return { lat: INDIA_CENTER.lat, lng: INDIA_CENTER.lng, zoom: INDIA_ZOOM };
   }, [sources]);
@@ -165,6 +176,7 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
   // Generate Leaflet HTML with Heatmap support
   const mapHtml = useMemo(() => {
     const serializedSources = JSON.stringify(filteredSources);
+    const serializedIndia = JSON.stringify(INDIA_OUTLINE_RINGS);
     return `
 <!DOCTYPE html>
 <html>
@@ -182,41 +194,38 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
       cursor: pointer;
     }
     .pin-bubble {
-      width: 32px;
-      height: 32px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px solid #FFFFFF;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+      border: 3px solid #FFFFFF;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.28);
       transition: transform 0.2s ease;
+      position: relative;
     }
     .pin-bubble.selected {
-      transform: rotate(-45deg) scale(1.25);
-      box-shadow: 0 0 16px rgba(0, 122, 255, 0.8);
-      border-color: #FFFFFF;
+      transform: scale(1.3);
+      box-shadow: 0 0 0 5px rgba(0, 122, 255, 0.28), 0 4px 12px rgba(0,0,0,0.3);
     }
     .pin-dot {
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       background: #FFFFFF;
       border-radius: 50%;
-      transform: rotate(45deg);
     }
     .pin-label {
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(255, 255, 255, 0.94);
       color: #1C1C1E;
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
       font-size: 11px;
       font-weight: 600;
-      padding: 2px 8px;
+      padding: 3px 9px;
       border-radius: 10px;
       white-space: nowrap;
-      margin-top: 4px;
-      border: 0.5px solid rgba(0,0,0,0.08);
-      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+      margin-top: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.18);
     }
     .leaflet-control-attribution { display: none !important; }
     .pulse-ring {
@@ -252,14 +261,55 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
       map = L.map('map', {
         zoomControl: false,
         attributionControl: false,
-        minZoom: 3
+        minZoom: 4,
+        zoomSnap: 0.5,
+        maxBounds: [[${INDIA_BOUNDS.south}, ${INDIA_BOUNDS.west}], [${INDIA_BOUNDS.north}, ${INDIA_BOUNDS.east}]],
+        maxBoundsViscosity: 0.9
       }).setView([${defaultCenter.lat}, ${defaultCenter.lng}], ${defaultCenter.zoom});
 
-      // Light, Apple-Maps-like basemap (CARTO Voyager on OpenStreetMap data) — free, no API key
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      // Clean, Apple-Maps-like street basemap. Esri World Street Map is free and needs
+      // no API key. If its tiles fail to load we transparently fall back to OpenStreetMap.
+      var esri = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, attribution: 'Tiles © Esri' }
+      );
+      var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '© OpenStreetMap © CARTO'
+        attribution: '© OpenStreetMap contributors'
+      });
+      var usingFallback = false;
+      var tileErrors = 0;
+      esri.on('tileerror', function() {
+        tileErrors++;
+        if (!usingFallback && tileErrors >= 3) {
+          usingFallback = true;
+          map.removeLayer(esri);
+          osm.addTo(map);
+          osm.bringToBack();
+        }
+      });
+      esri.addTo(map);
+
+      // ── India focus: dim everything outside India's official outline, then draw the outline ──
+      var indiaRings = ${serializedIndia};
+      map.createPane('indiaMask');
+      map.getPane('indiaMask').style.zIndex = 350;
+      map.getPane('indiaMask').style.pointerEvents = 'none';
+      var world = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
+      L.polygon([world].concat(indiaRings), {
+        pane: 'indiaMask',
+        stroke: false,
+        fillColor: '#E5E5EA',
+        fillOpacity: 0.62,
+        interactive: false
+      }).addTo(map);
+      L.polygon(indiaRings, {
+        pane: 'indiaMask',
+        color: '#007AFF',
+        weight: 1.6,
+        opacity: 0.9,
+        fill: false,
+        interactive: false
       }).addTo(map);
 
       markersLayer.addTo(map);
@@ -334,8 +384,8 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
         var icon = L.divIcon({
           className: '',
           html: iconHtml,
-          iconSize: [32, 42],
-          iconAnchor: [16, 32]
+          iconSize: [34, 34],
+          iconAnchor: [17, 17]
         });
 
         var marker = L.marker([s.latitude, s.longitude], { icon: icon });
@@ -361,11 +411,15 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
     window.zoomIn = function() { map.zoomIn(); };
     window.zoomOut = function() { map.zoomOut(); };
     window.recenterMap = function() {
-      if (allSources.length > 0) {
-        var bounds = L.latLngBounds(allSources.map(function(s) { return [s.latitude, s.longitude]; }));
+      var inIndia = allSources.filter(function(s) {
+        return s.latitude >= ${INDIA_BOUNDS.south} && s.latitude <= ${INDIA_BOUNDS.north} &&
+               s.longitude >= ${INDIA_BOUNDS.west} && s.longitude <= ${INDIA_BOUNDS.east};
+      });
+      if (inIndia.length > 0) {
+        var bounds = L.latLngBounds(inIndia.map(function(s) { return [s.latitude, s.longitude]; }));
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
       } else {
-        map.setView([${defaultCenter.lat}, ${defaultCenter.lng}], ${defaultCenter.zoom});
+        map.setView([${INDIA_CENTER.lat}, ${INDIA_CENTER.lng}], ${INDIA_ZOOM});
       }
     };
 
@@ -389,9 +443,9 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      {/* Top Search & Filter Bar */}
-      <View style={styles.topControlOverlay}>
+    <View style={styles.safeArea}>
+      {/* Floating Search & Filter Bar */}
+      <View style={[styles.topControlOverlay, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
         <View style={styles.searchBar}>
           <Icon name="search" size={18} color={colors.textMuted} />
           <TextInput
@@ -489,7 +543,7 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
 
         {/* Heatmap Legend Bar (Visible when Heatmap is ON) */}
         {showHeatmap && (
-          <View style={styles.heatmapLegend}>
+          <View style={[styles.heatmapLegend, { top: topBlock }]}>
             <Text style={styles.legendTitle}>Contamination Heatmap</Text>
             <View style={styles.legendGradientBar}>
               <View style={[styles.gradientSegment, { backgroundColor: colors.safe }]} />
@@ -505,7 +559,7 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
         )}
 
         {/* Floating Zoom & GPS Map Controls */}
-        <View style={styles.mapFloatingControls}>
+        <View style={[styles.mapFloatingControls, { top: topBlock }]}>
           <TouchableOpacity
             style={styles.mapControlBtn}
             onPress={handleZoomIn}
@@ -526,7 +580,7 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
             onPress={handleRecenter}
             activeOpacity={0.7}
           >
-            <Icon name="compass" size={18} color={colors.primary} />
+            <Icon name="locate" size={18} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -551,13 +605,16 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
             },
           ]}
         >
+          <View style={styles.sheetGrabber} />
           <View style={styles.bottomSheetHeader}>
-            <Text style={styles.sheetHeaderTitle}>Selected Source</Text>
+            <Text style={styles.sheetHeaderTitle}>Water Source</Text>
             <TouchableOpacity
               onPress={() => setSelectedSourceId(null)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Icon name="x" size={18} color={colors.textSecondary} />
+              <View style={styles.sheetCloseBtn}>
+                <Icon name="x" size={14} color={colors.textSecondary} />
+              </View>
             </TouchableOpacity>
           </View>
           <SourceCard
@@ -566,32 +623,35 @@ export const CommunityMapScreen: React.FC<CommunityMapScreenProps> = ({ onSelect
           />
         </Animated.View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: '#E9EEF3',
   },
   topControlOverlay: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 10,
-    backgroundColor: colors.glass,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderDark,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 14,
+    paddingBottom: 6,
     zIndex: 20,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(118, 118, 128, 0.12)',
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    height: 40,
-    marginBottom: 8,
+    backgroundColor: colors.glass,
+    borderRadius: radius.xl,
+    paddingHorizontal: 16,
+    height: 50,
+    marginBottom: 10,
+    ...shadows.elevated,
+    shadowOpacity: 0.1,
+    elevation: 4,
   },
   searchInput: {
     flex: 1,
@@ -612,10 +672,12 @@ const styles = StyleSheet.create({
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(118, 118, 128, 0.12)',
+    backgroundColor: colors.glass,
+    ...shadows.card,
+    elevation: 3,
   },
   filterChipSelected: {
     backgroundColor: colors.primary,
@@ -638,11 +700,13 @@ const styles = StyleSheet.create({
   heatmapToggleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(118, 118, 128, 0.12)',
+    backgroundColor: colors.glass,
     gap: 5,
+    ...shadows.card,
+    elevation: 3,
   },
   heatmapToggleBtnActive: {
     backgroundColor: colors.primary,
@@ -658,8 +722,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   mapContainer: {
-    flex: 1,
-    position: 'relative',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: '#E9EEF3',
   },
   webView: {
@@ -683,9 +750,9 @@ const styles = StyleSheet.create({
     top: 14,
     left: 14,
     backgroundColor: colors.glass,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: radius.lg,
     zIndex: 10,
     ...shadows.card,
   },
@@ -723,15 +790,15 @@ const styles = StyleSheet.create({
     right: 14,
     top: 14,
     backgroundColor: colors.glass,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     paddingVertical: 4,
     alignItems: 'center',
     zIndex: 10,
     ...shadows.card,
   },
   mapControlBtn: {
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -751,9 +818,9 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     right: 20,
-    backgroundColor: colors.surface,
-    padding: 12,
-    borderRadius: radius.md,
+    backgroundColor: colors.glass,
+    padding: 16,
+    borderRadius: radius.xl,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -774,8 +841,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 18,
     ...shadows.elevated,
     zIndex: 30,
   },
@@ -784,6 +851,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  sheetGrabber: {
+    alignSelf: 'center',
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.borderDark,
+    marginBottom: 10,
+  },
+  sheetCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sheetHeaderTitle: {
     fontSize: 12,

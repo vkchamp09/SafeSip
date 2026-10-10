@@ -185,8 +185,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     marginBottom: 20,
   },
   statusLeft: {
@@ -220,8 +218,6 @@ const styles = StyleSheet.create({
     paddingVertical: 28,
     paddingHorizontal: 20,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     marginBottom: 20,
     ...shadows.card,
   },

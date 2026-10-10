@@ -267,8 +267,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
   filterBtnText: {
     fontSize: 12,
@@ -281,17 +279,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   filterChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: radius.md,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: radius.full,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   chipText: {
     fontSize: 12,
@@ -299,7 +294,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   chipTextActive: {
-    color: colors.primary,
+    color: colors.white,
   },
   listContainer: {
     marginBottom: 20,
@@ -310,8 +305,6 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
   emptyTitle: {
     fontSize: 15,
@@ -369,8 +362,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: radius.sm,
     backgroundColor: colors.surfaceSecondary,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     marginRight: 8,
     marginBottom: 8,
   },
@@ -396,8 +387,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     marginBottom: 6,
   },
   sortRowSelected: {

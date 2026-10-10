@@ -147,10 +147,10 @@ export const typography = {
 
 export const radius = {
   xs: 6,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 22,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 26,
   full: 9999,
 };
 
@@ -162,14 +162,14 @@ export const shadows = {
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
-    elevation: 1,
+    elevation: 0,
   },
   card: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 14,
-    elevation: 2,
+    elevation: 0,
   },
   elevated: {
     shadowColor: '#000000',

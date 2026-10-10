@@ -250,8 +250,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     borderStyle: 'dashed',
     backgroundColor: colors.surfaceSecondary,
   },

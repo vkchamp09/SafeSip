@@ -80,8 +80,6 @@ const styles = StyleSheet.create({
     height: 76,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -118,8 +116,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
   versionText: {
     fontSize: 11,

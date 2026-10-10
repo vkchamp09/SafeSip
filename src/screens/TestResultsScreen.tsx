@@ -258,8 +258,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSecondary,
     padding: 14,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     marginBottom: 24,
   },
   disclaimerText: {

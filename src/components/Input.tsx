@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: 'transparent',
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
     height: 52,
     ...shadows.subtle,

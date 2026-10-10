@@ -84,8 +84,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: 16,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     ...shadows.elevated,
   },
   headerRow: {

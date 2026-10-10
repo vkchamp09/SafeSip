@@ -108,8 +108,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: radius.xs,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     marginLeft: 8,
   },
   syncButtonText: {
